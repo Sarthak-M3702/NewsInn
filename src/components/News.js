@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import NewsItem from './NewsItem'
 import Spinner from './Spinner';
 import PropTypes from 'prop-types'
+import InfiniteScroll from "react-infinite-scroll-component";
 
 export class News extends Component {
 
@@ -52,10 +53,29 @@ export class News extends Component {
         this.state={
             articles:this.articles,
             loading:false,
-            page:1
+            page:1,
+            totalResults:0
         }
     }
+
     async componentDidMount(){
+      this.props.setProgress(0);
+      let url =`https://newsapi.org/v2/top-headlines?country=${this.props.country}&category=${this.props.category}&apiKey=671e831d211b405b94f9b8ebf6ce646b&page=1&pageSize=${this.props.pageSize}`;
+      this.setState({
+        loading:true
+      })
+      const data = await fetch(url);
+      this.props.setProgress(30);
+      const parsedData = await data.json();
+      console.log(parsedData);
+      this.setState({articles:parsedData.articles,
+                    totalResults : parsedData.totalResults,
+                    loading:false
+      });
+      this.props.setProgress(100);
+    }
+      
+    async updateNews(){
       let url =`https://newsapi.org/v2/top-headlines?country=${this.props.country}&category=${this.props.category}&apiKey=671e831d211b405b94f9b8ebf6ce646b&page=1&pageSize=${this.props.pageSize}`;
       this.setState({
         loading:true
@@ -102,19 +122,39 @@ export class News extends Component {
     }
     }
 
+    fetchMoreData = async() => {
+      this.setState({page : this.state.page+1});
+      let url =`https://newsapi.org/v2/top-headlines?country=${this.props.country}&category=${this.props.category}&apiKey=671e831d211b405b94f9b8ebf6ce646b&page=${this.state.page+1}&pageSize=${this.props.pageSize}`;
+      const data = await fetch(url);
+      const parsedData = await data.json();
+      console.log(parsedData);
+      this.setState(
+                   {articles:this.state.articles.concat(parsedData.articles),
+                    totalResults : parsedData.totalResults,
+                    loading:false,
+                    
 
+      });
+    };
 
   render() {
     return (
       <div className="container my-3">
-        <h2 className="text-center">NewsInn - Top Headlines</h2>
-        {this.state.loading && <Spinner/>}
+        <h2 className="text-center">NewsInn - Top Headlines - {this.props.category.charAt(0).toUpperCase()+this.props.category.slice(1)}</h2>
+        {/*this.state.loading && <Spinner/>*/}
+        <InfiniteScroll
+          dataLength={this.state.articles.length}
+          next={this.fetchMoreData}
+          hasMore={this.state.articles.length!==this.state.totalResults}
+          loader={<Spinner/>}
+        >
+          <div className='container'>
         <div className="row">
             {
-                !this.state.loading && this.state.articles.map((element)=>{
+                this.state.articles.map((element)=>{
                     return <div className="col-md-4" key={element.url}>
-                        <NewsItem title ={element.title.slice(0,25)}
-                        description = {element.description?element.description.slice(0,88):""}
+                        <NewsItem title ={element.title}
+                        description = {element.description?element.description:""}
                         imageUrl = {element.urlToImage}
                         newsUrl ={element.url}
                         author ={element.author}
@@ -126,10 +166,12 @@ export class News extends Component {
             }
         
         </div>
-        <div className="container d-flex justify-content-between">
+        </div>
+        </InfiniteScroll>
+     {/*<div className="container d-flex justify-content-between">
         <button disabled ={this.state.page<=1}type="button" class="btn btn-dark" onClick={this.handlePrevClick}>&larr; Previous</button>
         <button disabled ={this.state.page+1>Math.ceil(this.state.totalResults/this.props.pageSize)} type="button" class="btn btn-dark" onClick={this.handleNextClick}>Next &rarr;</button>
-        </div>
+        </div>*/}
       </div>
       
     )
